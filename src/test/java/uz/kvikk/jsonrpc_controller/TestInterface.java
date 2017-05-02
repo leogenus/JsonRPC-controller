@@ -11,7 +11,4 @@ public interface TestInterface {
     @WsName("some")
     String getSomeThing(String test);
 
-    @WsName("some")
-    String getSomeThing(String test);
-
 }
