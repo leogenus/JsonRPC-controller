@@ -1,6 +1,7 @@
 # JsonRPC-controller
 Example Server side:
 
+
     // Interface for connection to the client
     @WsName("client")
     public interface TestInterface {    
@@ -22,8 +23,7 @@ Example Server side:
     wsServerRpc.initController(new WsController());
     TestInterface test = wsServerRpc.initService(TestInterface.class);
     test.getSomeThing("ss");
-        
-   
+           
     new WebSocketServer(new InetSocketAddress(8887)) {
         @Override
         public void onOpen(WebSocket webSocket, ClientHandshake clientHandshake) {
