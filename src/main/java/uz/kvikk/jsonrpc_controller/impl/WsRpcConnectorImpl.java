@@ -31,7 +31,7 @@ public class WsRpcConnectorImpl implements WsRpcConnector {
     private Gson gson;
     private Map<String, MethodObject> methodMap;
 
-    private Map<String, Exchanger<JSONRPC2Response>> exchangerMap;
+    private Map<String, MethodExchanger> exchangerMap;
     private Long exchangerId = 0L;
 
     public WsRpcConnectorImpl() {
@@ -48,20 +48,22 @@ public class WsRpcConnectorImpl implements WsRpcConnector {
         }.getType());
 
         String id = map.get("id").getAsString();
-        Exchanger exchanger = exchangerMap.get(id);
+        MethodExchanger methodExchanger = exchangerMap.get(id);
 
         // if is it response then return to e method of request
-        if (exchanger != null) {
+        if (methodExchanger != null) {
             JSONRPC2Response response = gson.fromJson(gson.toJsonTree(map), JSONRPC2Response.class);
+            response.setResult(gson.fromJson(map.get("result"), methodExchanger.method.getReturnType()));
+
             try {
-                exchanger.exchange(response, 2, TimeUnit.SECONDS);
+                methodExchanger.exchanger.exchange(response, 2, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
 //                e.printStackTrace();
             } catch (TimeoutException e) {
 //                e.printStackTrace();
             } finally {
                 exchangerMap.remove(id);
-                exchanger = null;
+                methodExchanger = null;
             }
         } else {
             //else if is it request then do invoke of method
@@ -121,11 +123,11 @@ public class WsRpcConnectorImpl implements WsRpcConnector {
                                 .setParams(args == null ? null : args.length == 1 ? args[0] : args);
 
                         Exchanger<JSONRPC2Response> exchanger = new Exchanger<>();
-                        exchangerMap.put(request.getId(), exchanger);
+                        exchangerMap.put(request.getId(), new MethodExchanger(method, exchanger));
 
-                        String ss = gson.toJson(request);
+                        String jsonString = gson.toJson(request);
 
-                        connection.send(ss);
+                        connection.send(jsonString);
 
                         JSONRPC2Response response = null;
                         try {
@@ -154,6 +156,15 @@ public class WsRpcConnectorImpl implements WsRpcConnector {
         }
     }
 
+    private class MethodExchanger {
+        public Method method;
+        public Exchanger<JSONRPC2Response> exchanger;
+
+        public MethodExchanger(Method method, Exchanger<JSONRPC2Response> exchanger) {
+            this.method = method;
+            this.exchanger = exchanger;
+        }
+    }
     private class MethodObject {
         private Method method;
         private Object object;
@@ -190,6 +201,4 @@ public class WsRpcConnectorImpl implements WsRpcConnector {
             }
         }
     }
-
-
 }
